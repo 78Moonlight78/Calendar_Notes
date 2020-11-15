@@ -57,6 +57,7 @@ class MyWidget(QMainWindow):
         self.btn_dv_del.clicked.connect(self.del_developments)
         self.calendarWidget.clicked.connect(self.show_developmets_list)
         self.btn_show.clicked.connect(self.show_else_dv)
+        self.btn_change.clicked.connect(self.change_developments)
 
     
     #создание новой заметки 
@@ -168,6 +169,19 @@ class MyWidget(QMainWindow):
         else:
             QMessageBox.question(self, 'Error','Выбирите событие', QMessageBox.Ok)
 
+    def change_developments(self):
+        data = self.calendarWidget.selectedDate().toString()
+        name_and_time = self.listWidget_dv.currentItem()
+        if name_and_time != None:
+            name, time = name_and_time.text().replace('\n', '').split()
+            query_del = '''
+            SELECT else_db, type_db FROM development
+            WHERE name_db = ? and data_db = ? and time_db = ?
+            '''
+    def creat_dialog_change(self):
+        dialog = QDialog()# нужно созать label и lineEdit, потом записать эти изменения в б.д
+
+
     def creat_dialog_info(self, info):
         dialog = QDialog()
         dialog.setWindowTitle('Событие' + info[0])
@@ -222,7 +236,6 @@ class MyWidget(QMainWindow):
         self.con.commit()
         self.line_name.clear()
         self.plainTextEdit_else.clear()
-
 
 
 if __name__ == '__main__':
