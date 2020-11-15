@@ -4,8 +4,9 @@ import os
 import sqlite3
 
 from PyQt5 import uic
-from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QLabel
 from PyQt5.QtWidgets import QInputDialog, QMessageBox, QComboBox
+from PyQt5.QtCore import Qt
 
 
 NAME_NOTES = 'name_notes.txt'
@@ -19,6 +20,9 @@ class MyWidget(QMainWindow):
         self.cursor = self.con.cursor()
         self.show_calendar_window()
 
+    #def keyPressEvent(self, event):
+        #if event.key() == "":
+            #pass
     #показ окна заметок   
     def show_zam(self):
         uic.loadUi('zametki.ui', self)
@@ -52,6 +56,7 @@ class MyWidget(QMainWindow):
         self.btn_zam.clicked.connect(self.show_zam)
         self.btn_dv_del.clicked.connect(self.del_developments)
         self.calendarWidget.clicked.connect(self.show_developmets_list)
+        self.btn_show.clicked.connect(self.show_else_dv)
 
     
     #создание новой заметки 
@@ -126,8 +131,6 @@ class MyWidget(QMainWindow):
             self.listWidget_dv.takeItem(self.listWidget_dv.row(self.listWidget_dv.currentItem()))
         else:
             QMessageBox.question(self, 'Error','Выбирите событие', QMessageBox.Ok)
-        delet_dv = '''
-        '''
 
     def show_developmets_list(self):
         self.listWidget_dv.clear()
@@ -135,14 +138,44 @@ class MyWidget(QMainWindow):
         show_dv = '''
         SELECT name_db, time_db from development
             WHERE data_db = ?
-
         '''
         result = self.cursor.execute(show_dv, (choose_data,)).fetchall()
         self.con.commit()
         for i in range(len(result)):
             self.listWidget_dv.insertItem(i, ' '.join(result[i]))
 
+    def show_else_dv(self):
+        data = self.calendarWidget.selectedDate().toString()
+        name_and_time = self.listWidget_dv.currentItem()
+        if name_and_time != None:
+            name, time = name_and_time.text().replace('\n', '').split()
+            query_del = '''
+            SELECT else_db, type_db FROM development
+            WHERE name_db = ? and data_db = ? and time_db = ?
+            '''
 
+            query_type = '''
+            SELECT name FROM types
+            WHERE id = ?
+            '''
+
+            else_dv, type_id = self.cursor.execute(query_del, (name, data, time)).fetchall()[0]
+            type_name = ' '.join(self.cursor.execute(query_type, (type_id,)).fetchall()[0])
+            self.con.commit()
+            info = ['Название: '+ name, 'Тип: ' + type_name, 'Дата: ' + data, 'Время: ' + time, 'Другое: ' + else_dv]
+            self.creat_dialog_info(info)
+             
+        else:
+            QMessageBox.question(self, 'Error','Выбирите событие', QMessageBox.Ok)
+
+    def creat_dialog_info(self, info):
+        dialog = QDialog()
+        dialog.setWindowTitle('Событие' + info[0])
+        dialog.resize(100, 100) 
+        for i in range(5):
+            QLabel(info[i], dialog).move(10, 20 * i)   
+        dialog.setWindowModality(Qt.ApplicationModal)
+        dialog.exec_()     
     #добавление события
     def add_development(self):
         #имя собыития 
@@ -155,6 +188,15 @@ class MyWidget(QMainWindow):
         text_else = self.plainTextEdit_else.toPlainText()
         #тип событий 
         type_dv = self.comboBox_type.currentText()
+
+        check_name = '''
+        SELECT name_db FROM development
+            WHERE time_db = ? and data_db = ? and name_db = ?
+        '''
+        if len(self.cursor.execute(check_name, (time, data, name)).fetchall()):
+            QMessageBox.question(self, 'Error','У вас уже есть это событие', QMessageBox.Ok)
+            return
+
         if type_dv == "Добавить":
             type_dv, ok_pressed = QInputDialog.getText(self, "Название", "Введите название типа")
             if ok_pressed:
@@ -165,21 +207,21 @@ class MyWidget(QMainWindow):
                 self.cursor.execute(add_type, (type_dv,))
                 self.con.commit()
                 self.comboBox_type.addItem(type_dv)
-        flag = True 
+
         while name == "":   
             name, ok_pressed = QInputDialog.getText(self, "Название", "Введите название заметки")
             if not ok_pressed:
-                flag = False
+                return
                 break
-        if flag:
-            query = '''
-                INSERT INTO development(name_db, time_db, data_db, else_db, type_db) VALUES(?, ?, ?, ?, 
-                   (SELECT id FROM types
-                        WHERE name = ?))
-                '''
-            self.cursor.execute(query, (name, time, data, text_else, type_dv))
-            self.con.commit()
-        self.line_name.setText('')
+        query = '''
+            INSERT INTO development(name_db, time_db, data_db, else_db, type_db) VALUES(?, ?, ?, ?, 
+                (SELECT id FROM types
+                    WHERE name = ?))
+            '''
+        self.cursor.execute(query, (name, time, data, text_else, type_dv))
+        self.con.commit()
+        self.line_name.clear()
+        self.plainTextEdit_else.clear()
 
 
 
