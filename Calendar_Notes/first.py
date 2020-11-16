@@ -4,8 +4,9 @@ import os
 import sqlite3
 
 from PyQt5 import uic
+from PyQt5.QtWidgets import QPlainTextEdit, QPushButton
 from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QLabel
-from PyQt5.QtWidgets import QInputDialog, QMessageBox, QComboBox
+from PyQt5.QtWidgets import QInputDialog, QMessageBox, QComboBox, QLineEdit
 from PyQt5.QtCore import Qt
 
 
@@ -57,7 +58,7 @@ class MyWidget(QMainWindow):
         self.btn_dv_del.clicked.connect(self.del_developments)
         self.calendarWidget.clicked.connect(self.show_developmets_list)
         self.btn_show.clicked.connect(self.show_else_dv)
-        self.btn_change.clicked.connect(self.change_developments)
+        #self.btn_change.clicked.connect(self.change_developments)
 
     
     #создание новой заметки 
@@ -144,7 +145,7 @@ class MyWidget(QMainWindow):
         self.con.commit()
         for i in range(len(result)):
             self.listWidget_dv.insertItem(i, ' '.join(result[i]))
-
+            
     def show_else_dv(self):
         data = self.calendarWidget.selectedDate().toString()
         name_and_time = self.listWidget_dv.currentItem()
@@ -169,31 +170,48 @@ class MyWidget(QMainWindow):
         else:
             QMessageBox.question(self, 'Error','Выбирите событие', QMessageBox.Ok)
 
-    def change_developments(self):
+    """def change_developments(self):
         data = self.calendarWidget.selectedDate().toString()
         name_and_time = self.listWidget_dv.currentItem()
         if name_and_time != None:
             name, time = name_and_time.text().replace('\n', '').split()
             query_del = '''
-            SELECT else_db, type_db FROM development
+            SELECT id, else_db, type_db FROM development
             WHERE name_db = ? and data_db = ? and time_db = ?
             '''
-    def creat_dialog_change(self):
-        dialog = QDialog()# нужно созать label и lineEdit, потом записать эти изменения в б.д
 
+            query_type = '''
+            SELECT name FROM types
+            WHERE id = ?
+            '''
+            
+            id_dv, else_dv, type_id = self.cursor.execute(query_del, (name, data, time)).fetchall()[0]
+            type_name = ' '.join(self.cursor.execute(query_type, (type_id,)).fetchall()[0])
+            self.con.commit()
+            info = [name, type_name, data, time, else_dv, id_dv]
+            
+        else:
+            QMessageBox.question(self, 'Error','Выбирите событие', QMessageBox.Ok)
 
+    def creat_window_change(self, info):
+
+"""
+        
+
+   
     def creat_dialog_info(self, info):
         dialog = QDialog()
         dialog.setWindowTitle('Событие' + info[0])
         dialog.resize(100, 100) 
         for i in range(5):
-            QLabel(info[i], dialog).move(10, 20 * i)   
+            QLabel(info[i], dialog).move(10, 20 * i)
+        name_line, type_line, data_line, time_line = [QLineEdit() for i in range(4)]   
         dialog.setWindowModality(Qt.ApplicationModal)
         dialog.exec_()     
     #добавление события
     def add_development(self):
         #имя собыития 
-        name = self.line_name.text()
+        name = str(self.line_name.text())
         #время события 
         time = self.timeEdit.time().toString()
         #дата 
